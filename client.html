@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Access</title>
+</head>
+<body>
+    <h2>Enter Code to Share Screen:</h2>
+    <input type="text" id="sessionCode" placeholder="Enter Code">
+    <button onclick="startSharing()">Start Sharing</button>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <script>
+        const socket = io("http://localhost:3000");
+        
+        function startSharing() {
+            let code = document.getElementById("sessionCode").value;
+            if (!code) return alert("Please enter a valid code!");
+
+            socket.emit("join-session", { code });
+
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then((stream) => {
+                let videoTrack = stream.getVideoTracks()[0];
+                let imageCapture = new ImageCapture(videoTrack);
+
+                function sendScreenData() {
+                    imageCapture.grabFrame().then((bitmap) => {
+                        let canvas = document.createElement("canvas");
+                        canvas.width = bitmap.width;
+                        canvas.height = bitmap.height;
+                        let ctx = canvas.getContext("2d");
+                        ctx.drawImage(bitmap, 0, 0);
+                        let imageData = canvas.toDataURL("image/jpeg");
+                        socket.emit("screen-data", { code, image: imageData });
+                    });
+                }
+
+                setInterval(sendScreenData, 1000);
+            });
+        }
+    </script>
+</body>
+</html>
